@@ -1,4 +1,4 @@
-# z--.language
+# z-- language
 simple programming language, for fun only, not for prodution
 # STRING COMPARASION DON'T WORK FOR NOW
 it have:
