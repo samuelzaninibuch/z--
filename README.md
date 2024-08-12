@@ -27,3 +27,4 @@ else {
 while (y < 10) {
     code
 }
+# ONLY SUPPORTS INTEGER AND STRINGS
