@@ -1,7 +1,7 @@
 # z-- language
 ![aj](https://github.com/user-attachments/assets/b7cf8be6-78d4-4b9d-8fb4-2549e1e7c888)
 
-simple programming language, for fun only, not for prodution
+simple interpreted programming language, for fun only, not for prodution
 
 
 # STRING COMPARASION DON'T WORK FOR NOW
@@ -28,3 +28,4 @@ while (y < 10) {
     code
 }
 # ONLY SUPPORTS INTEGER AND STRINGS
+z-- don't support arrays for now
