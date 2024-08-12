@@ -1,5 +1,9 @@
 # z-- language
+![aj](https://github.com/user-attachments/assets/b7cf8be6-78d4-4b9d-8fb4-2549e1e7c888)
+
 simple programming language, for fun only, not for prodution
+
+
 # STRING COMPARASION DON'T WORK FOR NOW
 it have:
 print
