@@ -10,4 +10,4 @@ fi
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 
 # Run the Python script with the provided filename
-python3 "$SCRIPT_DIR/my_language.py" "$1"
+python3 "$SCRIPT_DIR/z--.py" "$1"
