@@ -9,4 +9,4 @@ REM Get the full path of the script
 set SCRIPT_DIR=%~dp0
 
 REM Run the Python script with the provided filename
-python "%SCRIPT_DIR%my_language.py" %1
+python "%SCRIPT_DIR%z--.py" %1
