@@ -14,6 +14,10 @@ TOKEN = [
     ('INCREMENT', r'\+\+'),
     ('DECREMENT', r'--'),
     ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
+    ('PLUS', r'\+'),
+    ('MINUS', r'-'),
+    ('MULTIPLY', r'\*'),
+    ('DIVIDE', r'/'),
     ('NUMBER', r'\d+'),
     ('LPAREN', r'\('),
     ('RPAREN', r'\)'),
@@ -55,8 +59,16 @@ def parse(tokens):
         elif token_type == 'NUMBER':
             return int(token_value), index + 1
         elif token_type == 'IDENTIFIER':
-            return token_value, index + 1
+            left_expr = token_value
+            index += 1
+            if index < len(tokens) and tokens[index][0] in ('PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE'):
+                op = tokens[index][0]
+                index += 1
+                right_expr, index = parse_expression(index)
+                return ('BINARY_OP', left_expr, op, right_expr), index
+            return left_expr, index
         raise SyntaxError("Invalid expression")
+
 
     def parse_condition(index):
         if tokens[index][0] == 'LPAREN':
@@ -170,6 +182,7 @@ def evaluate_condition(condition, variables):
     raise SyntaxError("Invalid operator in condition")
 
 def interpret_node(node, variables):
+
     if node[0] == 'PRINT':
         expr = node[1]
         if isinstance(expr, str) and expr in variables:
@@ -179,7 +192,18 @@ def interpret_node(node, variables):
     elif node[0] == 'ASSIGN':
         var_name = node[1]
         expr = node[2]
-        if isinstance(expr, str) and expr in variables:
+        if isinstance(expr, tuple) and expr[0] == 'BINARY_OP':
+            left_expr = variables.get(expr[1], expr[1])
+            right_expr = variables.get(expr[3], expr[3])
+            if expr[2] == 'PLUS':
+                variables[var_name] = left_expr + right_expr
+            elif expr[2] == 'MINUS':
+                variables[var_name] = left_expr - right_expr
+            elif expr[2] == 'MULTIPLY':
+                variables[var_name] = left_expr * right_expr
+            elif expr[2] == 'DIVIDE':
+                variables[var_name] = left_expr / right_expr
+        elif isinstance(expr, str) and expr in variables:
             variables[var_name] = variables[expr]
         else:
             variables[var_name] = expr
@@ -214,11 +238,8 @@ def interpret_node(node, variables):
             raise NameError(f"Variable '{var_name}' not defined")
     elif node[0] == 'DECREMENT':
         var_name = node[1]
-        print(f"Decrementing variable: {var_name}")  # Debug print
         if var_name in variables:
-            print(f"Current value of {var_name}: {variables[var_name]}")  # Debug print
             variables[var_name] -= 1
-            print(f"New value of {var_name}: {variables[var_name]}")  # Debug print
         else:
             raise NameError(f"Variable '{var_name}' not defined")
 
