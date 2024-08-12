@@ -29,3 +29,7 @@ while (y < 10) {
 }
 # ONLY SUPPORTS INTEGER AND STRINGS
 z-- don't support arrays for now
+
+
+
+# Functions in development

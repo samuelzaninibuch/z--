@@ -6,11 +6,14 @@ TOKEN = [
     ('STRING', r'\".*\"'),
     ('PRINT', r'print'),
     ('SEMICOLON', r';'),
+    ('COMMA', r','),
     ('EQUALS', r'='),
     ('IF', r'if'),
     ('ELSE', r'else'),
     ('WHILE', r'while'),
     ('INPUT', r'input'),
+    ('IMPORT', r'use'),
+    ('FUNCTION', r'fc'),
     ('INCREMENT', r'\+\+'),
     ('DECREMENT', r'--'),
     ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
@@ -145,6 +148,25 @@ def parse(tokens):
             index += 1
             if tokens[index][0] == 'SEMICOLON':
                 return ('INPUT', var_type, var_name), index + 1
+        elif token_type == 'IMPORT':
+            index += 1
+            file = tokens[index][1]
+        elif token_type == 'FUNCTION':
+            index += 1
+            name = [tokens[index][1]]
+            index += 1
+            if tokens[index][0] == 'LPAREN':
+                index += 1
+                while tokens[index][0] != 'RPAREN':
+                    print(tokens[index])
+                    name.append(tokens[index])
+                    index += 1
+            if tokens[index][0] == 'LBRACE':
+                while tokens[index][0] != 'RBRACE':
+                    stmt, index = parse_statement(index)
+                    body.append(stmt)
+                index += 1
+                return ('FUNCTION', name, )
         raise SyntaxError("Invalid statement")
 
     ast = []
