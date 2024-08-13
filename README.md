@@ -13,7 +13,7 @@ else
 while
 increment
 decrement
-
+fc
 here:
 print "string";
 print varname;
@@ -27,9 +27,8 @@ else {
 while (y < 10) {
     code
 }
+fc name(args){
+  code
+}
 # ONLY SUPPORTS INTEGER AND STRINGS
 z-- don't support arrays for now
-
-
-
-# Functions in development
