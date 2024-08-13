@@ -34,10 +34,11 @@ TOKEN = [
     ('GTE', r'>=')
 ]
 
-debug_mode = False  # Set this to True to enable debug prints
+debug_mode = False # Set this to True to enable debug prints
 
 def tokenize(program):
     tokens = []
+    line_number = 1
     for line in program:
         while line:
             match = None
@@ -45,18 +46,21 @@ def tokenize(program):
                 regex = re.compile(pattern)
                 match = regex.match(line)
                 if match:
-                    tokens.append((token_type, match.group(0)))
+                    tokens.append((token_type, match.group(0), line_number))
                     line = line[match.end():].strip()
                     break
             if not match:
-                raise SyntaxError(f'Unexpected character: {line[0]}')
+                raise SyntaxError(f'Unexpected character: {line[0]} on line {line_number}')
+        line_number += 1
     if debug_mode:
         print("Tokens:", tokens) 
     return tokens
-
 def parse(tokens):
+    index = 0
+    ast = []
+
     def parse_expression(index):
-        token_type, token_value = tokens[index]
+        token_type, token_value, line_number = tokens[index]
         if token_type == 'STRING':
             return token_value, index + 1
         elif token_type == 'NUMBER':
@@ -64,14 +68,13 @@ def parse(tokens):
         elif token_type == 'IDENTIFIER':
             left_expr = token_value
             index += 1
-            if index < len(tokens) and tokens[index][0] in ('PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE'):
+            if index < len(tokens) and tokens[index][0] in ('PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE', 'MODULO'):
                 op = tokens[index][0]
                 index += 1
                 right_expr, index = parse_expression(index)
                 return ('BINARY_OP', left_expr, op, right_expr), index
             return left_expr, index
-        raise SyntaxError("Invalid expression")
-
+        raise SyntaxError(f"Invalid expression on line {line_number}")
 
     def parse_condition(index):
         if tokens[index][0] == 'LPAREN':
@@ -82,12 +85,13 @@ def parse(tokens):
             right_expr, index = parse_expression(index)
             if tokens[index][0] == 'RPAREN':
                 return ('CONDITION', left_expr, op, right_expr), index + 1
-        raise SyntaxError("Invalid condition")
+        line_number = tokens[index][2]
+        raise SyntaxError(f"Invalid condition on line {line_number}")
 
     def parse_statement(index):
-        token_type, token_value = tokens[index]
+        token_type, token_value, line_number = tokens[index]
         if debug_mode:
-            print(f"Parsing statement: {token_type}, {token_value}")  # Debug print
+            print(f"Parsing statement: {token_type}, {token_value} on line {line_number}")  # Debug print
         if token_type == 'PRINT':
             index += 1
             expr, index = parse_expression(index)
@@ -109,6 +113,17 @@ def parse(tokens):
                 index += 1
                 if tokens[index][0] == 'SEMICOLON':
                     return ('DECREMENT', var_name), index + 1
+            elif tokens[index][0] == 'LPAREN':
+                index += 1
+                call_args = []
+                while tokens[index][0] != 'RPAREN':
+                    arg, index = parse_expression(index)
+                    call_args.append(arg)
+                    if tokens[index][0] == 'COMMA':
+                        index += 1
+                index += 1
+                if tokens[index][0] == 'SEMICOLON':
+                    return ('CALL', var_name, call_args), index + 1
         elif token_type == 'IF':
             index += 1
             condition, index = parse_condition(index)
@@ -148,35 +163,36 @@ def parse(tokens):
             index += 1
             if tokens[index][0] == 'SEMICOLON':
                 return ('INPUT', var_type, var_name), index + 1
-        elif token_type == 'IMPORT':
-            index += 1
-            file = tokens[index][1]
         elif token_type == 'FUNCTION':
             index += 1
-            name = [tokens[index][1]]
+            func_name = tokens[index][1]
             index += 1
             if tokens[index][0] == 'LPAREN':
                 index += 1
+                func_args = []
                 while tokens[index][0] != 'RPAREN':
-                    print(tokens[index])
-                    name.append(tokens[index])
+                    func_args.append(tokens[index][1])
                     index += 1
-            if tokens[index][0] == 'LBRACE':
-                while tokens[index][0] != 'RBRACE':
-                    stmt, index = parse_statement(index)
-                    body.append(stmt)
+                    if tokens[index][0] == 'COMMA':
+                        index += 1
                 index += 1
-                return ('FUNCTION', name, )
-        raise SyntaxError("Invalid statement")
+                if tokens[index][0] == 'LBRACE':
+                    index += 1
+                    func_body = []
+                    while tokens[index][0] != 'RBRACE':
+                        stmt, index = parse_statement(index)
+                        func_body.append(stmt)
+                    index += 1
+                    return ('FUNCTION', [func_name] + func_args, func_body), index
+        raise SyntaxError(f"Invalid statement on line {line_number}")
 
-    ast = []
-    index = 0
+
+
     while index < len(tokens):
         node, index = parse_statement(index)
         ast.append(node)
-        if debug_mode:
-            print(f"AST so far: {ast}")  # Debug print
     return ast
+
 
 def evaluate_condition(condition, variables):
     left_expr, op, right_expr = condition[1], condition[2], condition[3]
@@ -203,8 +219,7 @@ def evaluate_condition(condition, variables):
         return left_value >= right_value
     raise SyntaxError("Invalid operator in condition")
 
-def interpret_node(node, variables):
-
+def interpret_node(node, variables, functions):
     if node[0] == 'PRINT':
         expr = node[1]
         if isinstance(expr, str) and expr in variables:
@@ -225,6 +240,8 @@ def interpret_node(node, variables):
                 variables[var_name] = left_expr * right_expr
             elif expr[2] == 'DIVIDE':
                 variables[var_name] = left_expr / right_expr
+            elif expr[2] == 'MODULO':
+                variables[var_name] = left_expr % right_expr
         elif isinstance(expr, str) and expr in variables:
             variables[var_name] = variables[expr]
         else:
@@ -234,14 +251,20 @@ def interpret_node(node, variables):
         if_body = node[2]
         else_body = node[3]
         if evaluate_condition(condition, variables):
-            interpret(if_body, variables)
+            result = interpret(if_body, variables, functions)
+            if result is not None:
+                return result
         else:
-            interpret(else_body, variables)
+            result = interpret(else_body, variables, functions)
+            if result is not None:
+                return result
     elif node[0] == 'WHILE':
         condition = node[1]
         body = node[2]
         while evaluate_condition(condition, variables):
-            interpret(body, variables)
+            result = interpret(body, variables, functions)
+            if result is not None:
+                return result
     elif node[0] == 'INPUT':
         var_type = node[1]
         var_name = node[2]
@@ -264,10 +287,34 @@ def interpret_node(node, variables):
             variables[var_name] -= 1
         else:
             raise NameError(f"Variable '{var_name}' not defined")
-
-def interpret(ast, variables):
+    elif node[0] == 'FUNCTION':
+        func_name = node[1][0]
+        func_args = node[1][1:]
+        func_body = node[2]
+        functions[func_name] = (func_args, func_body)
+    elif node[0] == 'CALL':
+        func_name = node[1]
+        call_args = node[2]
+        if func_name in functions:
+            func_args, func_body = functions[func_name]
+            local_vars = variables.copy()
+            for arg_name, arg_value in zip(func_args, call_args):
+                local_vars[arg_name] = variables.get(arg_value, arg_value)
+            result = interpret(func_body, local_vars, functions)
+            if result is not None:
+                return result
+        else:
+            raise NameError(f"Function '{func_name}' not defined")
+def interpret(ast, variables, functions):
     for node in ast:
-        interpret_node(node, variables)
+        result = interpret_node(node, variables, functions)
+        if result is not None:
+            return result
+
+
+def interpret(ast, variables, functions):
+    for node in ast:
+        interpret_node(node, variables, functions)
 
 def main():
     if len(sys.argv) != 2:
@@ -286,7 +333,8 @@ def main():
     tokens = tokenize(program)
     ast = parse(tokens)
     variables = {}
-    interpret(ast, variables)
+    functions = {}
+    interpret(ast, variables, functions)
 
 if __name__ == "__main__":
     main()
